@@ -86,6 +86,7 @@ public class NodeResourceMonitorImpl extends AbstractService implements
         ResourceCalculatorPlugin.getNodeResourceMonitorPlugin(conf);
 
     if (nmContext.getResourcePluginManager() != null) {
+        /*
       this.gpuResourcePlugin =
           (GpuResourcePlugin)nmContext.getResourcePluginManager().
           getNameToPlugins().get(ResourceInformation.GPU_URI);
@@ -95,6 +96,7 @@ public class NodeResourceMonitorImpl extends AbstractService implements
             (GpuNodeResourceUpdateHandler)gpuResourcePlugin.
                 getNodeResourceHandlerInstance();
       }
+      */
     }
 
     LOG.info(" Using ResourceCalculatorPlugin : "
