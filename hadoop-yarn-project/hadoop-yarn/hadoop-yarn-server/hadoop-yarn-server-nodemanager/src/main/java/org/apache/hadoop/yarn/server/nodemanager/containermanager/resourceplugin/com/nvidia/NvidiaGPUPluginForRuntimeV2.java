@@ -84,6 +84,7 @@ public class NvidiaGPUPluginForRuntimeV2 implements DevicePlugin,
 
   private Set<Device> lastTimeFoundDevices;
 
+  // device id -> mig id
   private Map<Integer, String> migDevices = new HashMap<>();
 
   /**
@@ -182,7 +183,7 @@ public class NvidiaGPUPluginForRuntimeV2 implements DevicePlugin,
                     String devId = matcher.group(2);
                     LOG.warn("device id is: " + devId);
                     LOG.warn("full line id is: " + matcher.group(0));
-                    migDevices.put(minorNumInt, devId);
+                    migDevices.put(id, devId);
 
                     migDevCount++;
                     r.add(Device.Builder.newInstance()
@@ -247,10 +248,11 @@ public class NvidiaGPUPluginForRuntimeV2 implements DevicePlugin,
       StringBuffer gpuMinorNumbersSB = new StringBuffer();
       for (Device device : allocatedDevices) {
         Integer minorNum = device.getMinorNumber();
-        if (migDevices.containsKey(minorNum)) {
-          gpuMinorNumbersSB.append(minorNum + ":" + migDevices.get(minorNum)  + ",");
+        Integer id = device.getId();
+        if (migDevices.containsKey(id)) {
+          gpuMinorNumbersSB.append(minorNum + ":" + migDevices.get(id)  + ",");
         } else {
-          gpuMinorNumbersSB.append(device.getMinorNumber() + ",");
+          gpuMinorNumbersSB.append(minorNum + ",");
         }
       }
       String minorNumbers = gpuMinorNumbersSB.toString();
