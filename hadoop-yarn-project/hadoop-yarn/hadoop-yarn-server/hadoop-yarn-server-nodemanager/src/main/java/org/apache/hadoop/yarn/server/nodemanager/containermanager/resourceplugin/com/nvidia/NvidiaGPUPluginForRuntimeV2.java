@@ -140,6 +140,7 @@ public class NvidiaGPUPluginForRuntimeV2 implements DevicePlugin,
 
       output = shellExecutor.getDeviceInfo();
       String[] lines = output.trim().split("\n");
+      LOG.warn("device info : " + output);
       int id = 0;
       for (String oneLine : lines) {
         String[] tokensEachLine = oneLine.split(",");
@@ -155,9 +156,10 @@ public class NvidiaGPUPluginForRuntimeV2 implements DevicePlugin,
        LOG.warn("major number is: " + majorNumber);
        LOG.warn("minor number is: " + minorNumber);
        LOG.warn("bus id is: " + busId);
+       LOG.warn("mig mode is: " + migMode);
 
         if (majorNumber != null) {
-          if (Boolean.getBoolean(migMode)) {
+          if (migMode.equalsIgnoreCase("enabled")) {
             // TODO - this is all output and we get multiple times change that
             String migInfoOutput = shellExecutor.getDeviceMigInfo();
             LOG.warn("mig info output is: " + migInfoOutput);
