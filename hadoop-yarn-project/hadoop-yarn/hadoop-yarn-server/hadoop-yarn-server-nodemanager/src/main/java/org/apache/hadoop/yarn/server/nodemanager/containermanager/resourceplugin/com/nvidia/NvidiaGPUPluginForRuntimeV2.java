@@ -138,70 +138,81 @@ public class NvidiaGPUPluginForRuntimeV2 implements DevicePlugin,
       String mode = shellExecutor.getDeviceMigMode();
       LOG.warn("mig mode output is: " + mode);
 
-      output = shellExecutor.getDeviceMigInfo();
-      LOG.warn("mig info output is: " + output);
-      String[] linesmig = output.trim().split("\n");
-      if (linesmig.length > 1) {
-        for (int idmig = 0; idmig < linesmig.length; idmig++) {
-          // first line should be GPU
-          // GPU 0: NVIDIA A30 (UUID: GPU-e7076666-0544-e103-4f65-a047fc18269e)
-          // MIG 1g.6gb      Device  0: (UUID: MIG-de9876e2-eef7-5b5a-9701-db694ffe8a77)
-          if (linesmig[idmig].startsWith("GPU")) {
-            // process any MIG
-            String nextLine = linesmig[idmig + 1].trim();
-            // TODO - we need to continue and skip lines in for loop above
-            if (nextLine.startsWith("MIG")) {
-              String regex = "MIG (.+)Device\\s+(\\d+):\\s+\\(UUID:(.*)\\)";
-              Pattern pattern = Pattern.compile(regex);
-              Matcher matcher = pattern.matcher(nextLine);
-
-              // StringBuilder result = new StringBuilder();
-              while (matcher.find()) {
-                String devId = matcher.group(2);
-                LOG.warn("device id is: " + devId);
-                LOG.warn("full line id is: " + matcher.group(0));
-                migDevices.put(0, devId);
-              }
-              // String[] tokensEachLine = oneLine.split(",");
-            } else if (nextLine.startsWith("GPU")) {
-              // not mig
-              LOG.warn("not mig, another GPU");
-            } else {
-              // unknown
-              LOG.warn("unknown");
-            }
-          }
-        }
-      }
-
       output = shellExecutor.getDeviceInfo();
       String[] lines = output.trim().split("\n");
       int id = 0;
       for (String oneLine : lines) {
         String[] tokensEachLine = oneLine.split(",");
-        if (tokensEachLine.length != 2) {
+        if (tokensEachLine.length != 3) {
           throw new Exception("Cannot parse the output to get device info. "
               + "Unexpected format in it:" + oneLine);
         }
         String minorNumber = tokensEachLine[0].trim();
         String busId = tokensEachLine[1].trim();
+        String migMode = tokensEachLine[2].trim();
         String majorNumber = getMajorNumber(DEV_NAME_PREFIX
             + minorNumber);
        LOG.warn("major number is: " + majorNumber);
        LOG.warn("minor number is: " + minorNumber);
        LOG.warn("bus id is: " + busId);
 
-
         if (majorNumber != null) {
-          r.add(Device.Builder.newInstance()
-              .setId(id)
-              .setMajorNumber(Integer.parseInt(majorNumber))
-              .setMinorNumber(Integer.parseInt(minorNumber))
-              .setBusID(busId)
-              .setDevPath("/dev/" + DEV_NAME_PREFIX + minorNumber)
-              .setHealthy(true)
-              .build());
-          id++;
+          if (Boolean.getBoolean(migMode)) {
+            // TODO - this is all output and we get multiple times change that
+            String migInfoOutput = shellExecutor.getDeviceMigInfo();
+            LOG.warn("mig info output is: " + migInfoOutput);
+            String[] linesMig = migInfoOutput.trim().split("\n");
+            Integer minorNumInt = Integer.parseInt(minorNumber);
+            Integer migDevCount = 0;
+            for (int idmig = 0; idmig < linesMig.length; idmig++) {
+              // first line should be GPU
+              // GPU 0: NVIDIA A30 (UUID: GPU-e7076666-0544-e103-4f65-a047fc18269e)
+              // MIG 1g.6gb      Device  0: (UUID: MIG-de9876e2-eef7-5b5a-9701-db694ffe8a77)
+              if (linesMig[idmig].startsWith("GPU " + minorNumInt)) {
+                // process any MIG, expect all lines until the next one that starts with GPU
+                // to be mig
+                String nextLine = linesMig[++idmig].trim();
+                String regex = "MIG (.+)Device\\s+(\\d+):\\s+\\(UUID:(.*)\\)";
+                Pattern pattern = Pattern.compile(regex);
+                while (nextLine.startsWith("MIG")) {
+                  Matcher matcher = pattern.matcher(nextLine);
+                  while (matcher.find()) {
+                    String devId = matcher.group(2);
+                    LOG.warn("device id is: " + devId);
+                    LOG.warn("full line id is: " + matcher.group(0));
+                    migDevices.put(minorNumInt, devId);
+
+                    migDevCount++;
+                    r.add(Device.Builder.newInstance()
+                            .setId(id)
+                            .setMajorNumber(Integer.parseInt(majorNumber))
+                            .setMinorNumber(Integer.parseInt(minorNumber))
+                            .setBusID(busId)
+                            .setDevPath("/dev/" + DEV_NAME_PREFIX + minorNumber)
+                            .setHealthy(true)
+                            .setStatus(devId)
+                            .build());
+                    id++;
+                    nextLine = linesMig[++idmig].trim();
+                  }
+                }
+                break;
+              }
+            }
+            if (migDevCount < 1) {
+              throw new IOException("Error finding MIG devices: " + migInfoOutput);
+            }
+          } else {
+            r.add(Device.Builder.newInstance()
+                    .setId(id)
+                    .setMajorNumber(Integer.parseInt(majorNumber))
+                    .setMinorNumber(Integer.parseInt(minorNumber))
+                    .setBusID(busId)
+                    .setDevPath("/dev/" + DEV_NAME_PREFIX + minorNumber)
+                    .setHealthy(true)
+                    .build());
+            id++;
+          }
         }
       }
       // cache it which help to topology scheduling
@@ -690,7 +701,7 @@ public class NvidiaGPUPluginForRuntimeV2 implements DevicePlugin,
 
     public String getDeviceInfo() throws IOException {
       return Shell.execCommand(environment,
-          new String[]{pathOfGpuBinary, "--query-gpu=index,pci.bus_id",
+          new String[]{pathOfGpuBinary, "--query-gpu=index,pci.bus_id,mig.mode.current",
               "--format=csv,noheader"}, MAX_EXEC_TIMEOUT_MS);
     }
 
