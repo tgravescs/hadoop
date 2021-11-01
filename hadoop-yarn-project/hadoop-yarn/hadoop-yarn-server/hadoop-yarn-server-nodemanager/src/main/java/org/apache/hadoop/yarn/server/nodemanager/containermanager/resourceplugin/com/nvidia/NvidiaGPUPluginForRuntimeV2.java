@@ -195,13 +195,18 @@ public class NvidiaGPUPluginForRuntimeV2 implements DevicePlugin,
                             .setStatus(devId)
                             .build());
                     id++;
-                    nextLine = linesMig[++idmig].trim();
+                    if (++idmig < linesMig.length) {
+                      nextLine = linesMig[++idmig].trim();
+                    } else {
+                      break;
+                    }
                   }
                 }
                 break;
               }
             }
             if (migDevCount < 1) {
+              LOG.warn("mig dev count: " + migDevCount)
               throw new IOException("Error finding MIG devices: " + migInfoOutput);
             }
           } else {
