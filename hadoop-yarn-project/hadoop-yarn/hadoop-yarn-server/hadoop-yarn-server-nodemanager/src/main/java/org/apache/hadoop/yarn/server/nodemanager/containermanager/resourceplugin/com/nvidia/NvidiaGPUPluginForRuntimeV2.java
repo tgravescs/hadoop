@@ -84,6 +84,8 @@ public class NvidiaGPUPluginForRuntimeV2 implements DevicePlugin,
 
   private Set<Device> lastTimeFoundDevices;
 
+  private Map<String, String> migDevices = new HashMap<>();
+
   /**
    * It caches the combination of different devices and the communication cost.
    * The key is device count
@@ -147,6 +149,7 @@ public class NvidiaGPUPluginForRuntimeV2 implements DevicePlugin,
           if (linesmig[idmig].startsWith("GPU")) {
             // process any MIG
             String nextLine = linesmig[idmig + 1].trim();
+            // TODO - we need to continue and skip lines in for loop above
             if (nextLine.startsWith("MIG")) {
               String regex = "MIG (.+)Device\\s+(\\d+):\\s+\\(UUID:(.*)\\)";
               Pattern pattern = Pattern.compile(regex);
@@ -154,9 +157,10 @@ public class NvidiaGPUPluginForRuntimeV2 implements DevicePlugin,
 
               // StringBuilder result = new StringBuilder();
               while (matcher.find()) {
-                LOG.warn("device id is: " + matcher.group(2));
+                String devId = matcher.group(2);
+                LOG.warn("device id is: " + devId);
                 LOG.warn("full line id is: " + matcher.group(0));
-
+                migDevices.put(0, devId);
               }
               // String[] tokensEachLine = oneLine.split(",");
             } else if (nextLine.startsWith("GPU")) {
@@ -185,6 +189,8 @@ public class NvidiaGPUPluginForRuntimeV2 implements DevicePlugin,
             + minorNumber);
        LOG.warn("major number is: " + majorNumber);
        LOG.warn("minor number is: " + minorNumber);
+       LOG.warn("bus id is: " + busId);
+
 
         if (majorNumber != null) {
           r.add(Device.Builder.newInstance()
@@ -217,13 +223,18 @@ public class NvidiaGPUPluginForRuntimeV2 implements DevicePlugin,
       String nvidiaVisibleDevices = "NVIDIA_VISIBLE_DEVICES";
       StringBuffer gpuMinorNumbersSB = new StringBuffer();
       for (Device device : allocatedDevices) {
-        gpuMinorNumbersSB.append(device.getMinorNumber() + ",");
+        Integer minorNum = device.getMinorNumber();
+        if (migDevices.containsKey(minorNum)) {
+          gpuMinorNumbersSB.append(minorNum + ":" + migDevices.get(minorNum)  + ",");
+        } else {
+          gpuMinorNumbersSB.append(device.getMinorNumber() + ",");
+        }
       }
       String minorNumbers = gpuMinorNumbersSB.toString();
       LOG.info("Nvidia Docker v2 assigned GPU: " + minorNumbers);
+      String deviceStr = minorNumbers.substring(0, minorNumbers.length() - 1);
       return DeviceRuntimeSpec.Builder.newInstance()
-          .addEnv(nvidiaVisibleDevices,
-              minorNumbers.substring(0, minorNumbers.length() - 1))
+          .addEnv(nvidiaVisibleDevices, deviceStr)
           .setContainerRuntime(nvidiaRuntime)
           .build();
     }
