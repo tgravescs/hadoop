@@ -18,6 +18,9 @@
 
 package org.apache.hadoop.yarn.server.nodemanager.containermanager.resourceplugin.com.nvidia;
 
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
 import org.apache.hadoop.classification.VisibleForTesting;
 import org.apache.hadoop.thirdparty.com.google.common.collect.ImmutableSet;
 import org.apache.hadoop.util.Shell;
@@ -53,7 +56,7 @@ public class NvidiaGPUPluginForRuntimeV2 implements DevicePlugin,
   public static final Logger LOG = LoggerFactory.getLogger(
       NvidiaGPUPluginForRuntimeV2.class);
 
-  public static final String NV_RESOURCE_NAME = "nvidia.com/gpu";
+  public static final String NV_RESOURCE_NAME = "nvidia/gpu";
 
   private NvidiaCommandExecutor shellExecutor = new NvidiaCommandExecutor();
 
@@ -130,6 +133,43 @@ public class NvidiaGPUPluginForRuntimeV2 implements DevicePlugin,
     TreeSet<Device> r = new TreeSet<>();
     String output;
     try {
+      String mode = shellExecutor.getDeviceMigMode();
+      LOG.warn("mig mode output is: " + mode);
+
+      output = shellExecutor.getDeviceMigInfo();
+      LOG.warn("mig info output is: " + output);
+      String[] linesmig = output.trim().split("\n");
+      if (linesmig.length > 1) {
+        for (int idmig = 0; idmig < linesmig.length; idmig++) {
+          // first line should be GPU
+          // GPU 0: NVIDIA A30 (UUID: GPU-e7076666-0544-e103-4f65-a047fc18269e)
+          // MIG 1g.6gb      Device  0: (UUID: MIG-de9876e2-eef7-5b5a-9701-db694ffe8a77)
+          if (linesmig[idmig].startsWith("GPU")) {
+            // process any MIG
+            String nextLine = linesmig[idmig + 1].trim();
+            if (nextLine.startsWith("MIG")) {
+              String regex = "MIG (.+)Device\\s+(\\d+):\\s+\\(UUID:(.*)\\)";
+              Pattern pattern = Pattern.compile(regex);
+              Matcher matcher = pattern.matcher(nextLine);
+
+              // StringBuilder result = new StringBuilder();
+              while (matcher.find()) {
+                LOG.warn("device id is: " + matcher.group(2));
+                LOG.warn("full line id is: " + matcher.group(0));
+
+              }
+              // String[] tokensEachLine = oneLine.split(",");
+            } else if (nextLine.startsWith("GPU")) {
+              // not mig
+              LOG.warn("not mig, another GPU");
+            } else {
+              // unknown
+              LOG.warn("unknown");
+            }
+          }
+        }
+      }
+
       output = shellExecutor.getDeviceInfo();
       String[] lines = output.trim().split("\n");
       int id = 0;
@@ -143,6 +183,9 @@ public class NvidiaGPUPluginForRuntimeV2 implements DevicePlugin,
         String busId = tokensEachLine[1].trim();
         String majorNumber = getMajorNumber(DEV_NAME_PREFIX
             + minorNumber);
+       LOG.warn("major number is: " + majorNumber);
+       LOG.warn("minor number is: " + minorNumber);
+
         if (majorNumber != null) {
           r.add(Device.Builder.newInstance()
               .setId(id)
@@ -200,7 +243,7 @@ public class NvidiaGPUPluginForRuntimeV2 implements DevicePlugin,
       LOG.debug("Get major numbers from /dev/{}", devName);
       output = shellExecutor.getMajorMinorInfo(devName);
       String[] strs = output.trim().split(":");
-      LOG.debug("stat output:{}", output);
+      LOG.warn("stat output:{}", output);
       output = Integer.toString(Integer.parseInt(strs[0], 16));
     } catch (IOException e) {
       String msg =
@@ -638,6 +681,17 @@ public class NvidiaGPUPluginForRuntimeV2 implements DevicePlugin,
       return Shell.execCommand(environment,
           new String[]{pathOfGpuBinary, "--query-gpu=index,pci.bus_id",
               "--format=csv,noheader"}, MAX_EXEC_TIMEOUT_MS);
+    }
+
+    public String getDeviceMigMode() throws IOException {
+      return Shell.execCommand(environment,
+              new String[]{pathOfGpuBinary, "--query-gpu=index,mig.mode.current",
+                      "--format=csv,noheader"}, MAX_EXEC_TIMEOUT_MS);
+    }
+
+    public String getDeviceMigInfo() throws IOException {
+      return Shell.execCommand(environment,
+              new String[]{pathOfGpuBinary, "-L"}, MAX_EXEC_TIMEOUT_MS);
     }
 
     public String getMajorMinorInfo(String devName) throws IOException {
