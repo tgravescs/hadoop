@@ -84,7 +84,7 @@ public class NvidiaGPUPluginForRuntimeV2 implements DevicePlugin,
 
   private Set<Device> lastTimeFoundDevices;
 
-  private Map<String, String> migDevices = new HashMap<>();
+  private Map<Integer, String> migDevices = new HashMap<>();
 
   /**
    * It caches the combination of different devices and the communication cost.
