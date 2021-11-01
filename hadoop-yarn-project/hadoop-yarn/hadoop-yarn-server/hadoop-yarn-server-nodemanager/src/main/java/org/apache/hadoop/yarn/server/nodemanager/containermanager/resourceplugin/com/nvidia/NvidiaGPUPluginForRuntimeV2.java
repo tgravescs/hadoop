@@ -197,7 +197,8 @@ public class NvidiaGPUPluginForRuntimeV2 implements DevicePlugin,
                     id++;
                     LOG.warn("id is: " + id);
                     if (++idmig < linesMig.length) {
-                      nextLine = linesMig[++idmig].trim();
+                      LOG.warn("before next line");
+                      nextLine = linesMig[idmig].trim();
                       LOG.warn("next line is: " + nextLine);
                     } else {
                       LOG.warn("met end of lines: ");
