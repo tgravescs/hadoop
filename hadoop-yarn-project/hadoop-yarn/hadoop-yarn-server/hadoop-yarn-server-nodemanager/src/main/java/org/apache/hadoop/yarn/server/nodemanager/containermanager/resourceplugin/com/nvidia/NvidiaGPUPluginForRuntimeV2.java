@@ -136,9 +136,6 @@ public class NvidiaGPUPluginForRuntimeV2 implements DevicePlugin,
     TreeSet<Device> r = new TreeSet<>();
     String output;
     try {
-      String mode = shellExecutor.getDeviceMigMode();
-      LOG.warn("mig mode output is: " + mode);
-
       output = shellExecutor.getDeviceInfo();
       String[] lines = output.trim().split("\n");
       LOG.warn("device info : " + output);
@@ -304,15 +301,22 @@ public class NvidiaGPUPluginForRuntimeV2 implements DevicePlugin,
     if (availableDevices.size() < 3
         || count == 1
         || availableDevices.size() == count) {
+      LOG.warn("using basic scheduler");
       basicSchedule(allocation, count, availableDevices);
       return allocation;
     }
 
+    // todo - temporary hack to skip cost table
+    basicSchedule(allocation, count, availableDevices);
+    return allocation;
+
+    /*
     try {
       if (!topoInitialized) {
         initCostTable();
       }
       // topology aware scheduling
+      LOG.warn("using topology aware scheduler");
       topologyAwareSchedule(allocation, count,
           envs, availableDevices, this.costTable);
       if (allocation.size() == count) {
@@ -328,6 +332,8 @@ public class NvidiaGPUPluginForRuntimeV2 implements DevicePlugin,
     // basic scheduling
     basicSchedule(allocation, count, availableDevices);
     return allocation;
+
+     */
   }
 
   @VisibleForTesting
@@ -454,6 +460,7 @@ public class NvidiaGPUPluginForRuntimeV2 implements DevicePlugin,
       gpuIndex0 = String.valueOf(devices[i].getMinorNumber());
       for (int j = i + 1; j < devices.length; j++) {
         gpuIndex1 = String.valueOf(devices[j].getMinorNumber());
+        // TODO - check is cost for MIG right
         cost += this.devicePairToWeight.get(gpuIndex0 + "-" + gpuIndex1);
       }
     }
@@ -717,12 +724,6 @@ public class NvidiaGPUPluginForRuntimeV2 implements DevicePlugin,
       return Shell.execCommand(environment,
           new String[]{pathOfGpuBinary, "--query-gpu=index,pci.bus_id,mig.mode.current",
               "--format=csv,noheader"}, MAX_EXEC_TIMEOUT_MS);
-    }
-
-    public String getDeviceMigMode() throws IOException {
-      return Shell.execCommand(environment,
-              new String[]{pathOfGpuBinary, "--query-gpu=index,mig.mode.current",
-                      "--format=csv,noheader"}, MAX_EXEC_TIMEOUT_MS);
     }
 
     public String getDeviceMigInfo() throws IOException {
