@@ -48,8 +48,11 @@ import java.util.TreeSet;
 
 /**
  * Nvidia GPU plugin supporting both Nvidia container runtime v2 for Docker and
- * non-Docker container.
- * It has topology aware as well as simple scheduling ability.
+ * non-Docker container. This supports allocating MIG devices, but has the limitation
+ * of only allowing 1 GPU per container.
+ *
+ * Topology aware code not used here because of the 1 GPU per container limitation.
+ * TODO - remove that code
  * */
 public class NvidiaGPUPluginForRuntimeV2 implements DevicePlugin,
     DevicePluginScheduler {
@@ -240,7 +243,7 @@ public class NvidiaGPUPluginForRuntimeV2 implements DevicePlugin,
     LOG.debug("Generating runtime spec for allocated devices: {}, {}",
         allocatedDevices, yarnRuntime.getName());
     if (allocatedDevices.size() > 1) {
-      throw new YarnException("Allocating more then 1 GPU per container is" +
+      throw new YarnException("Allocating more than 1 GPU per container is" +
               " not supported with use of MIG!");
     }
     if (yarnRuntime == YarnRuntimeType.RUNTIME_DOCKER) {
