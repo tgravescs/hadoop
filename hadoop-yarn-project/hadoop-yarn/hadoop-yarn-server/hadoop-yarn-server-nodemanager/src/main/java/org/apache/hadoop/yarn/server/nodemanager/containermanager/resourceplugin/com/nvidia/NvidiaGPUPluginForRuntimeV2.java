@@ -239,6 +239,10 @@ public class NvidiaGPUPluginForRuntimeV2 implements DevicePlugin,
       YarnRuntimeType yarnRuntime) throws Exception {
     LOG.debug("Generating runtime spec for allocated devices: {}, {}",
         allocatedDevices, yarnRuntime.getName());
+    if (allocatedDevices.size() > 1) {
+      throw new YarnException("Allocating more then 1 GPU per container is" +
+              " not supported with use of MIG!");
+    }
     if (yarnRuntime == YarnRuntimeType.RUNTIME_DOCKER) {
       String nvidiaRuntime = "nvidia";
       String nvidiaVisibleDevices = "NVIDIA_VISIBLE_DEVICES";
@@ -306,7 +310,8 @@ public class NvidiaGPUPluginForRuntimeV2 implements DevicePlugin,
       return allocation;
     }
 
-    // todo - temporary hack to skip cost table
+    // todo - temporary hack to skip cost table, we don't support multiple
+    // GPUs with MIG
     basicSchedule(allocation, count, availableDevices);
     return allocation;
 
