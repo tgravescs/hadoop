@@ -86,8 +86,12 @@ public class NvidiaDockerV2CommandPlugin implements DockerCommandPlugin {
     Map<String, String> environment = new HashMap<>();
     String gpuIndexList = "";
     for (GpuDevice gpuDevice : assignedResources) {
-      gpuIndexList = gpuIndexList + gpuDevice.getIndex() + ",";
-      LOG.info("nvidia docker2 assigned gpu index: " + gpuDevice.getIndex());
+      String deviceIndex = String.valueOf(gpuDevice.getIndex());
+      if (gpuDevice.getMIGIndex() != -1) {
+        deviceIndex = gpuDevice.getIndex() + ":" + gpuDevice.getMIGIndex();
+      }
+      gpuIndexList = gpuIndexList + deviceIndex + ",";
+      LOG.info("nvidia docker2 assigned gpu index: " + deviceIndex);
     }
     dockerRunCommand.addRuntime(nvidiaRuntime);
     environment.put(nvidiaVisibleDevices,

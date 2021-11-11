@@ -150,6 +150,9 @@ public class GpuDiscoverer {
         YarnConfiguration.NM_GPU_ALLOWED_DEVICES,
         YarnConfiguration.AUTOMATICALLY_DISCOVER_GPU_DEVICES);
 
+    Boolean useMIGEnabledGPUs = conf.getBoolean(
+            YarnConfiguration.USE_MIG_ENABLED_GPUS, false);
+
     List<GpuDevice> gpuDevices = new ArrayList<>();
 
     if (allowedDevicesStr.equals(
@@ -173,13 +176,17 @@ public class GpuDiscoverer {
              i++) {
           List<PerGpuDeviceInformation> gpuInfos =
               lastDiscoveredGpuInformation.getGpus();
-          if (gpuInfos.get(i).getMIGMode().getCurrentMigMode().equalsIgnoreCase("enabled")) {
+          if (useMIGEnabledGPUs &&
+              gpuInfos.get(i).getMIGMode().getCurrentMigMode().equalsIgnoreCase("enabled")) {
             LOG.warn("GPU id " + i + " has MIG mode enabled.");
             for (PerGpuMigDevice dev: gpuInfos.get(i).getMIGDevices()) {
               LOG.warn("mig dev index is: " + dev.getMigDeviceIndex());
+              gpuDevices.add(new GpuDevice(gpuId, gpuInfos.get(i).getMinorNumber(), dev.getMigDeviceIndex()));
+              gpuId++;
             }
+          } else {
+            gpuDevices.add(new GpuDevice(gpuId, gpuInfos.get(i).getMinorNumber()));
           }
-          gpuDevices.add(new GpuDevice(gpuId, gpuInfos.get(i).getMinorNumber()));
           gpuId++;
         }
       }
@@ -187,14 +194,29 @@ public class GpuDiscoverer {
       for (String s : allowedDevicesStr.split(",")) {
         if (s.trim().length() > 0) {
           String[] kv = s.trim().split(":");
-          if (kv.length != 2) {
-            throw new YarnException(
-                "Illegal format, it should be index:minor_number format, now it="
-                    + s);
+          if (useMIGEnabledGPUs) {
+            if (kv.length != 2 && kv.length != 3) {
+              throw new YarnException(
+                      "Illegal format, it should be index:minor_number or index:minor_number:mig_device_id" +
+                              " format, now it=" + s);
+            }
+            if (kv.length == 3) {
+              // assumes this is MIG enabled device
+              gpuDevices.add(
+                      new GpuDevice(Integer.parseInt(kv[0]), Integer.parseInt(kv[1]), Integer.parseInt(kv[2])));
+            } else {
+              gpuDevices.add(
+                      new GpuDevice(Integer.parseInt(kv[0]), Integer.parseInt(kv[1])));
+            }
+          } else {
+            if (kv.length != 2) {
+              throw new YarnException(
+                      "Illegal format, it should be index:minor_number format, now it="
+                              + s);
+            }
+            gpuDevices.add(
+                    new GpuDevice(Integer.parseInt(kv[0]), Integer.parseInt(kv[1])));
           }
-
-          gpuDevices.add(
-              new GpuDevice(Integer.parseInt(kv[0]), Integer.parseInt(kv[1])));
         }
       }
       LOG.info("Allowed GPU devices:" + gpuDevices);
