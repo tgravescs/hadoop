@@ -21,7 +21,9 @@ package org.apache.hadoop.yarn.server.nodemanager.containermanager.resourceplugi
 import com.google.common.annotations.VisibleForTesting;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.yarn.api.records.ResourceInformation;
+import org.apache.hadoop.yarn.conf.YarnConfiguration;
 import org.apache.hadoop.yarn.server.nodemanager.containermanager.container.Container;
 import org.apache.hadoop.yarn.server.nodemanager.containermanager.container.ResourceMappings;
 import org.apache.hadoop.yarn.server.nodemanager.containermanager.linux.resources.gpu.GpuResourceAllocator;
@@ -46,8 +48,11 @@ public class NvidiaDockerV2CommandPlugin implements DockerCommandPlugin {
   private String nvidiaRuntime = "nvidia";
   private String nvidiaVisibleDevices = "NVIDIA_VISIBLE_DEVICES";
   private String nvidiaMigThrowOnMultiGpus = "NVIDIA_MIG_PLUGIN_THROW_ON_MULTIPLE_GPUS";
+  private Boolean isMigEnabled = false;
 
-  public NvidiaDockerV2CommandPlugin() {}
+  public NvidiaDockerV2CommandPlugin(Configuration conf) {
+    isMigEnabled = conf.getBoolean(YarnConfiguration.USE_MIG_ENABLED_GPUS, false);
+  }
 
   private Set<GpuDevice> getAssignedGpus(Container container) {
     ResourceMappings resourceMappings = container.getResourceMappings();
@@ -85,16 +90,17 @@ public class NvidiaDockerV2CommandPlugin implements DockerCommandPlugin {
       return;
     }
     Map<String, String> environment = new HashMap<>();
-    Map<String, String> existingEnv = dockerRunCommand.getEnv();
-    Boolean shouldThrowOnMultipleGpus = true;
-    if (existingEnv.containsKey(nvidiaMigThrowOnMultiGpus)) {
-      LOG.warn("environment contains key " + nvidiaMigThrowOnMultiGpus +
-              " value is: " + existingEnv.get(nvidiaMigThrowOnMultiGpus));
-    }
-    // TODO check mig enabled config?
-    if (assignedResources.size() > 1 && shouldThrowOnMultipleGpus) {
-      throw new ContainerExecutionException("Currently only supports 1 GPU per container when " +
-              "using MIG devices.");
+    if (isMigEnabled && assignedResources.size() > 1) {
+      Map<String, String> existingEnv = dockerRunCommand.getEnv();
+      Boolean shouldThrowOnMultipleGpus = true;
+      if (existingEnv.containsKey(nvidiaMigThrowOnMultiGpus)) {
+        LOG.warn("environment contains key " + nvidiaMigThrowOnMultiGpus +
+                " value is: " + existingEnv.get(nvidiaMigThrowOnMultiGpus));
+      }
+      if (shouldThrowOnMultipleGpus) {
+        throw new ContainerExecutionException("Currently only supports 1 GPU per container when " +
+                "using MIG devices.");
+      }
     }
     String gpuIndexList = "";
     for (GpuDevice gpuDevice : assignedResources) {
