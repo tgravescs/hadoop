@@ -91,7 +91,7 @@ public class NvidiaDockerV2CommandPlugin implements DockerCommandPlugin {
     }
     Map<String, String> environment = new HashMap<>();
     if (isMigEnabled && assignedResources.size() > 1) {
-      Map<String, String> existingEnv = dockerRunCommand.getEnv();
+      Map<String, String> existingEnv = container.getLaunchContext().getEnvironment();
       Boolean shouldThrowOnMultipleGpus = true;
       LOG.warn("nevironment contains: " + existingEnv);
       if (existingEnv.containsKey(nvidiaMigThrowOnMultiGpus)) {
