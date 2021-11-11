@@ -171,7 +171,6 @@ public class GpuDiscoverer {
       }
 
       if (lastDiscoveredGpuInformation.getGpus() != null) {
-        int gpuId = 0;
         for (int i = 0; i < lastDiscoveredGpuInformation.getGpus().size();
              i++) {
           List<PerGpuDeviceInformation> gpuInfos =
@@ -181,13 +180,11 @@ public class GpuDiscoverer {
             LOG.warn("GPU id " + i + " has MIG mode enabled.");
             for (PerGpuMigDevice dev: gpuInfos.get(i).getMIGDevices()) {
               LOG.warn("mig dev index is: " + dev.getMigDeviceIndex());
-              gpuDevices.add(new GpuDevice(gpuId, gpuInfos.get(i).getMinorNumber(), dev.getMigDeviceIndex()));
-              gpuId++;
+              gpuDevices.add(new GpuDevice(i, gpuInfos.get(i).getMinorNumber(), dev.getMigDeviceIndex()));
             }
           } else {
-            gpuDevices.add(new GpuDevice(gpuId, gpuInfos.get(i).getMinorNumber()));
+            gpuDevices.add(new GpuDevice(i, gpuInfos.get(i).getMinorNumber()));
           }
-          gpuId++;
         }
       }
     } else{
