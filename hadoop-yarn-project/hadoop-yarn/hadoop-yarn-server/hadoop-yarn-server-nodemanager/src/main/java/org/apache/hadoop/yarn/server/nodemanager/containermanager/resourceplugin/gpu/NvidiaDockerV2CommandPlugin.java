@@ -92,16 +92,11 @@ public class NvidiaDockerV2CommandPlugin implements DockerCommandPlugin {
     Map<String, String> environment = new HashMap<>();
     if (isMigEnabled && assignedResources.size() > 1) {
       Map<String, String> existingEnv = container.getLaunchContext().getEnvironment();
-      Boolean shouldThrowOnMultipleGpus = true;
-      LOG.warn("nevironment contains: " + existingEnv);
-      if (existingEnv.containsKey(nvidiaMigThrowOnMultiGpus)) {
-        LOG.warn("environment contains key " + nvidiaMigThrowOnMultiGpus +
-                " value is: " + existingEnv.get(nvidiaMigThrowOnMultiGpus));
-        shouldThrowOnMultipleGpus = Boolean.parseBoolean(existingEnv.get(nvidiaMigThrowOnMultiGpus));
-      }
+      Boolean shouldThrowOnMultipleGpus = Boolean.parseBoolean(
+              existingEnv.getOrDefault(nvidiaMigThrowOnMultiGpus, "true"));
       if (shouldThrowOnMultipleGpus) {
-        throw new ContainerExecutionException("Currently only supports 1 GPU per container when " +
-                "using MIG devices.");
+        throw new ContainerExecutionException("Allocating more than 1 GPU per container is " +
+                "not supported with use of MIG!");
       }
     }
     String gpuIndexList = "";
