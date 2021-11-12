@@ -152,6 +152,7 @@ public class GpuDiscoverer {
 
     Boolean useMIGEnabledGPUs = conf.getBoolean(
             YarnConfiguration.USE_MIG_ENABLED_GPUS, false);
+    LOG.info("Use MIG enabled is: " + useMIGEnabledGPUs);
 
     List<GpuDevice> gpuDevices = new ArrayList<>();
 
