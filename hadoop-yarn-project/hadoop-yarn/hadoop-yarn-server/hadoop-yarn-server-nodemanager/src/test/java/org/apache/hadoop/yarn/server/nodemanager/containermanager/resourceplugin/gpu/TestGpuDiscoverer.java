@@ -138,4 +138,47 @@ public class TestGpuDiscoverer {
     Assert.assertTrue(2 == usableGpuDevices.get(2).getMinorNumber());
     Assert.assertTrue(4 == usableGpuDevices.get(3).getMinorNumber());
   }
+
+  @Test
+  public void getNumberOfUsableGpusFromConfigMIG() throws YarnException {
+    Configuration conf = new Configuration(false);
+    conf.set(YarnConfiguration.USE_MIG_ENABLED_GPUS, "true");
+
+    // Illegal format
+    conf.set(YarnConfiguration.NM_GPU_ALLOWED_DEVICES, "0:0,1:1:2,2:2:0,3");
+    GpuDiscoverer plugin = new GpuDiscoverer();
+    try {
+      plugin.initialize(conf);
+      plugin.getGpusUsableByYarn();
+      Assert.fail("Illegal format, should fail.");
+    } catch (YarnException e) {
+      // Expected
+    }
+
+    // Valid format
+    conf.set(YarnConfiguration.NM_GPU_ALLOWED_DEVICES, "0:0,1:1:0,1:1:2,2:2:0,3:4");
+    plugin = new GpuDiscoverer();
+    plugin.initialize(conf);
+
+    List<GpuDevice> usableGpuDevices = plugin.getGpusUsableByYarn();
+    Assert.assertEquals(5, usableGpuDevices.size());
+
+    Assert.assertTrue(0 == usableGpuDevices.get(0).getIndex());
+    Assert.assertTrue(1 == usableGpuDevices.get(1).getIndex());
+    Assert.assertTrue(1 == usableGpuDevices.get(2).getIndex());
+    Assert.assertTrue(2 == usableGpuDevices.get(3).getIndex());
+    Assert.assertTrue(3 == usableGpuDevices.get(4).getIndex());
+
+    Assert.assertTrue(0 == usableGpuDevices.get(0).getMinorNumber());
+    Assert.assertTrue(1 == usableGpuDevices.get(1).getMinorNumber());
+    Assert.assertTrue(1 == usableGpuDevices.get(2).getMinorNumber());
+    Assert.assertTrue(2 == usableGpuDevices.get(3).getMinorNumber());
+    Assert.assertTrue(4 == usableGpuDevices.get(4).getMinorNumber());
+
+    Assert.assertTrue(-1 == usableGpuDevices.get(0).getMinorNumber());
+    Assert.assertTrue(0 == usableGpuDevices.get(1).getMinorNumber());
+    Assert.assertTrue(2 == usableGpuDevices.get(2).getMinorNumber());
+    Assert.assertTrue(0 == usableGpuDevices.get(3).getMinorNumber());
+    Assert.assertTrue(-1 == usableGpuDevices.get(4).getMinorNumber());
+  }
 }
