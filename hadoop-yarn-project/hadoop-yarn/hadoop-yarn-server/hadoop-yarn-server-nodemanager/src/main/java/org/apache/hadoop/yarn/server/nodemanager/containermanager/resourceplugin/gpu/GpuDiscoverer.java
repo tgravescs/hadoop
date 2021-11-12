@@ -177,15 +177,15 @@ public class GpuDiscoverer {
               lastDiscoveredGpuInformation.getGpus();
           if (useMIGEnabledGPUs &&
               gpuInfos.get(i).getMIGMode().getCurrentMigMode().equalsIgnoreCase("enabled")) {
-            LOG.warn("GPU id " + i + " has MIG mode enabled.");
+            LOG.info("GPU id " + i + " has MIG mode enabled.");
             for (PerGpuMigDevice dev: gpuInfos.get(i).getMIGDevices()) {
-              LOG.warn("mig dev index is: " + dev.getMigDeviceIndex());
               gpuDevices.add(new GpuDevice(i, gpuInfos.get(i).getMinorNumber(), dev.getMigDeviceIndex()));
             }
           } else {
             gpuDevices.add(new GpuDevice(i, gpuInfos.get(i).getMinorNumber()));
           }
         }
+        LOG.info("Discovered GPU devices: " + gpuDevices);
       }
     } else{
       for (String s : allowedDevicesStr.split(",")) {

@@ -441,10 +441,11 @@ public class ContainersMonitorImpl extends AbstractService implements
           ContainerId containerId = entry.getKey();
           ProcessTreeInfo ptInfo = entry.getValue();
           try {
+            String pId = ptInfo.getPID();
+
             // Initialize uninitialized process trees
             initializeProcessTrees(entry);
 
-            String pId = ptInfo.getPID();
             if (pId == null || !isResourceCalculatorAvailable()) {
               continue; // processTree cannot be tracked
             }
