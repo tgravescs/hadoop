@@ -175,10 +175,10 @@ public class TestGpuDiscoverer {
     Assert.assertTrue(2 == usableGpuDevices.get(3).getMinorNumber());
     Assert.assertTrue(4 == usableGpuDevices.get(4).getMinorNumber());
 
-    Assert.assertTrue(-1 == usableGpuDevices.get(0).getMinorNumber());
-    Assert.assertTrue(0 == usableGpuDevices.get(1).getMinorNumber());
-    Assert.assertTrue(2 == usableGpuDevices.get(2).getMinorNumber());
-    Assert.assertTrue(0 == usableGpuDevices.get(3).getMinorNumber());
-    Assert.assertTrue(-1 == usableGpuDevices.get(4).getMinorNumber());
+    Assert.assertTrue(-1 == usableGpuDevices.get(0).getMIGIndex());
+    Assert.assertTrue(0 == usableGpuDevices.get(1).getMIGIndex());
+    Assert.assertTrue(2 == usableGpuDevices.get(2).getMIGIndex());
+    Assert.assertTrue(0 == usableGpuDevices.get(3).getMIGIndex());
+    Assert.assertTrue(-1 == usableGpuDevices.get(4).getMIGIndex());
   }
 }
