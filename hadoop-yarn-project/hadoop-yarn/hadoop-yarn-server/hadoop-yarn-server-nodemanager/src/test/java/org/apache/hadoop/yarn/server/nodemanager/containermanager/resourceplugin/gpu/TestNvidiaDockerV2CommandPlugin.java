@@ -20,6 +20,7 @@ package org.apache.hadoop.yarn.server.nodemanager.containermanager.resourceplugi
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Sets;
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.yarn.api.records.ResourceInformation;
 import org.apache.hadoop.yarn.server.nodemanager.containermanager.container.Container;
 import org.apache.hadoop.yarn.server.nodemanager.containermanager.container.ResourceMappings;
@@ -69,7 +70,9 @@ public class TestNvidiaDockerV2CommandPlugin {
       extends NvidiaDockerV2CommandPlugin {
     private boolean requestsGpu = false;
 
-    MyNvidiaDockerV2CommandPlugin() {}
+    MyNvidiaDockerV2CommandPlugin() {
+      super(new Configuration());
+    }
 
     public void setRequestsGpu(boolean r) {
       requestsGpu = r;
